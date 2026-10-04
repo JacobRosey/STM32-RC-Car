@@ -1,0 +1,17 @@
+# Build output
+/Debug/
+/Release/
+/Binaries/
+/STM32CubeIDE/
+
+# Compiled/generated build artifacts
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+
+# Local debug launch configurations
+*.launch
