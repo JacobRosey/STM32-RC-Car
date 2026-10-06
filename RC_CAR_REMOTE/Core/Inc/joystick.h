@@ -10,6 +10,6 @@
 #ifndef INC_JOYSTICK_H_
 #define INC_JOYSTICK_H_
 
-HAL_StatusTypeDef BuildJoystickPacket(ADC_HandleTypeDef* hadc1, int8_t values[]);
+HAL_StatusTypeDef BuildJoystickPacket(ADC_HandleTypeDef* hadc1, JoystickPacket *j);
 
 #endif /* INC_JOYSTICK_H_ */

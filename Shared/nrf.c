@@ -230,37 +230,7 @@ static void Microsecond_Sleep(uint16_t duration){
 		while((uint16_t)(timer->Instance->CNT - initial) <= duration);
 		HAL_TIM_Base_Stop(timer);
 }
-/**
- * @brief Fetches the newest packet from RX FIFO
- *
- * @param[out] rx_data pointer to buffer in which to place newest packet
- * @return NRF_Status Status indicating whether the operation succeeded.
- */
-static NRF_Status Get_Newest_Packet(int8_t rx_data[]){
-	// Only sending 1 command byte, but need to send 5 clock pulses
-	// to receive status byte + payload_length data bytes
-	uint8_t raw[TRANSMIT_PAYLOAD_WIDTH + 1];
-	uint8_t read[] = READ_RX;
-	NRF_Status status;
-	uint8_t rx_status = FIFO_STATUS;
-	uint8_t byte;
-	status = Read_Register(rx_status, &byte);
-	if (status != NRF_OK) return status;
-	if(byte & 0x01) return NRF_RX_FIFO_EMPTY;
-	// Pulse CE low to stop listening for transmissions while draining FIFO
-	HAL_GPIO_WritePin(SPI_CE_GPIO_Port, SPI_CE_Pin, GPIO_PIN_RESET);
-	// Read until the FIFO is empty. Last packet drained from fifo is the newest
-	do {
-		status = Send_SPI_Command(read, TRANSMIT_PAYLOAD_WIDTH + 1, raw);
-		if (status != NRF_OK) return status;
-		memcpy(rx_data, raw + 1, TRANSMIT_PAYLOAD_WIDTH); // strip status byte
-		status = Read_Register(FIFO_STATUS, &rx_status);
-		if (status != NRF_OK) return status;
-	} while (!(rx_status & 0x01)); // continue while data in rx fifo
-	// Resume listening for transmissions
-	HAL_GPIO_WritePin(SPI_CE_GPIO_Port, SPI_CE_Pin, GPIO_PIN_SET);
-	return NRF_OK;
-}
+
 /**
  * @brief Configures the nRF24l01 as a receiver
  *
@@ -361,6 +331,44 @@ NRF_Status NRF_Reset(SPI_HandleTypeDef *hspi1){
 	  return NRF_SPI_UNEXPECTED_READ;
 	return NRF_OK;
 }
+
+/**
+ * @brief Fetches the newest packet from RX FIFO
+ *
+ * @param[out] rx_data pointer to buffer in which to place newest packet
+ * @return NRF_Status Status indicating whether the operation succeeded.
+ */
+static NRF_Status Get_Newest_Packet(int8_t rx_data[]){
+	// Only sending 1 command byte, but need to send 5 clock pulses
+	// to receive status byte + payload_length data bytes
+	uint8_t raw[TRANSMIT_PAYLOAD_WIDTH + 1];
+	uint8_t read[] = READ_RX;
+	NRF_Status status;
+
+	uint8_t rx_status = FIFO_STATUS;
+	uint8_t byte;
+	status = Read_Register(rx_status, &byte);
+	if (status != NRF_OK) return status;
+
+	if(byte & 0x01) return NRF_RX_FIFO_EMPTY;
+
+	// Pulse CE low to stop listening for transmissions while draining FIFO
+	HAL_GPIO_WritePin(SPI_CE_GPIO_Port, SPI_CE_Pin, GPIO_PIN_RESET);
+
+	// Read until the FIFO is empty. Last packet drained from fifo is the newest
+	do {
+		status = Send_SPI_Command(read, TRANSMIT_PAYLOAD_WIDTH + 1, raw);
+		if (status != NRF_OK) return status;
+		memcpy(rx_data, raw + 1, TRANSMIT_PAYLOAD_WIDTH); // strip status byte
+		status = Read_Register(FIFO_STATUS, &rx_status);
+		if (status != NRF_OK) return status;
+	} while (!(rx_status & 0x01)); // continue while data in rx fifo
+
+	// Resume listening for transmissions
+	HAL_GPIO_WritePin(SPI_CE_GPIO_Port, SPI_CE_Pin, GPIO_PIN_SET);
+	return NRF_OK;
+}
+
 /**
  * @brief Transmits data using the nRF24L01
  *
@@ -423,11 +431,11 @@ NRF_Status NRF_Transmit(int8_t values[], int8_t rx_data[]){
  */
 NRF_Status NRF_Receive(int8_t rx_data[]){
 	NRF_Status status;
-	status = Get_Newest_Packet(rx_data);
-	if (status != NRF_OK) return status;
-	// Write ack payload; this would be telemetry like battery health (via ADC voltage divider)
-	// and connection strength / packet loss, something like that?
 	uint8_t cmd[] = W_ACK_PAYLOAD; // {cmd, dummy, dummy, dummy, dummy} ; replace dummy with telemetry
 	status = Send_SPI_Command(cmd, ACK_PAYLOAD_WIDTH + 1, NULL);
+	if (status != NRF_OK) return status;
+
+	status = Get_Newest_Packet(rx_data);
+
 	return status;
 }

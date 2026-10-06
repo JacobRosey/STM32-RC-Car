@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "nrf.h"
+#include "packets.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -106,20 +108,26 @@ int main(void)
    //Suppress unused warning
    (void)init_status;
 
-   int8_t received[2] = {0};
+   int8_t received[sizeof(JoystickPacket)];
+   JoystickPacket joystick_packet;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-   uint8_t iter = 0;
+   uint8_t failed = 0;
    while (1)
-	  // THIS IS THE CAR PROGRAM - receiver side
   {
     /* USER CODE END WHILE */
 	   NRF_Status rx_status = NRF_Receive(received);
-	  // Or simply if not nrf_ok?
-	  //if(NRF_RXStatus == NRF_RECEIVER_TIMEOUT) {KillMotor(); return 1};
-	  iter++;
+	   if(rx_status == NRF_OK)
+	   {
+		   memcpy(&joystick_packet, received, sizeof(joystick_packet));
+	   }
+	   else
+	   {
+		   //if(failed >= 3) return KillMotor(); // TODO: implement this once i have motor control
+		   failed++;
+	   }
 	  (void) rx_status;
     /* USER CODE BEGIN 3 */
   }

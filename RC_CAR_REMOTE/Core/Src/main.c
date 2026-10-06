@@ -120,12 +120,12 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
    uint8_t iter = 0;
-   int8_t joystick_packet[2];
+   JoystickPacket joystick_packet;
   while (1)
   {
-	  BuildJoystickPacket(&hadc1, joystick_packet);
+	  BuildJoystickPacket(&hadc1, &joystick_packet);
 
-	  tx_status = NRF_Transmit(joystick_packet, telemetry);
+	  tx_status = NRF_Transmit((uint8_t *)&joystick_packet, telemetry);
 	  iter++;
     /* USER CODE END WHILE */
 
